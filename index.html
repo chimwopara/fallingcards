@@ -30,7 +30,8 @@
     </script>
     <style>
         /* Custom Utilities & Animations */
-        body { overscroll-behavior-y: none; touch-action: none; overflow: hidden; }
+        /* Prevent pull-to-refresh and back-swipe navigation which causes the game to "restart" */
+        body { overscroll-behavior: none; touch-action: none; overflow: hidden; -webkit-user-select: none; user-select: none; }
         .glass-panel { background-color: rgba(20, 20, 25, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
         .glass-sheet { background-color: rgba(30, 30, 35, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
         .card-shadow { box-shadow: 2px 2px 3px rgba(0,0,0,0.5), -2px -2px 3px rgba(255,255,255,0.2); }
@@ -65,7 +66,7 @@
         
         <!-- Hamburger Menu Button (Left End) -->
         <div class="pointer-events-auto">
-            <button id="btn-menu-toggle" class="w-12 h-12 flex items-center justify-center bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-black/60 transition shadow-lg">
+            <button id="btn-menu-toggle" class="w-12 h-12 flex items-center justify-center bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-black/60 transition shadow-lg cursor-pointer">
                 <i class="fas fa-bars text-xl"></i>
             </button>
         </div>
@@ -87,7 +88,7 @@
 
         <!-- Points / Store Button (Right End) -->
         <div class="pointer-events-auto">
-            <button id="btn-open-store" class="h-12 px-4 flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-full border border-white/10 hover:bg-black/60 transition shadow-lg">
+            <button id="btn-open-store" class="h-12 px-4 flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-full border border-white/10 hover:bg-black/60 transition shadow-lg cursor-pointer">
                 <i class="fas fa-star text-brand-gold text-lg"></i>
                 <span id="points-display" class="font-bold text-lg text-shadow">1000</span>
             </button>
@@ -147,13 +148,13 @@
                 </button>
                 <div id="user-info" class="hidden w-full flex justify-between items-center bg-black/20 p-3.5 rounded-xl border border-white/5">
                     <div class="flex items-center gap-3"><i class="fas fa-user-circle text-brand-green text-xl"></i> <span id="username-display" class="font-bold truncate max-w-[120px]">Player</span></div>
-                    <button id="btn-signout" class="text-brand-red text-sm font-bold bg-white/5 px-3 py-1.5 rounded-lg hover:bg-brand-red/20 transition">Sign Out</button>
+                    <button id="btn-signout" class="text-brand-red text-sm font-bold bg-white/5 px-3 py-1.5 rounded-lg hover:bg-brand-red/20 transition cursor-pointer">Sign Out</button>
                 </div>
             </div>
 
             <!-- Main Menu Options -->
             <div id="menu-main" class="flex flex-col gap-3">
-                <button onclick="showMenuSection('practice')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5 shadow-sm">
+                <button onclick="showMenuSection('practice')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5 shadow-sm cursor-pointer">
                     <div class="flex items-center gap-4"><i class="fas fa-running text-xl w-6 text-center text-blue-400"></i> <span class="font-bold text-lg">Practice</span></div>
                     <i class="fas fa-chevron-right text-gray-500"></i>
                 </button>
@@ -161,7 +162,7 @@
                     <div class="flex items-center gap-4"><i class="fas fa-user-friends text-xl w-6 text-center text-purple-400"></i> <span class="font-bold text-lg">Multiplayer</span></div>
                     <i class="fas fa-chevron-right text-gray-500"></i>
                 </button>
-                <button onclick="openDiamondModal()" class="flex justify-between items-center gold-gradient p-4 rounded-xl shadow-lg mt-4 text-white hover:brightness-110 transition">
+                <button onclick="openDiamondModal()" class="flex justify-between items-center gold-gradient p-4 rounded-xl shadow-lg mt-4 text-white hover:brightness-110 transition cursor-pointer">
                     <div class="flex items-center gap-3"><i class="fas fa-gift text-xl w-6 text-center text-white text-shadow-black"></i> <span class="font-bold text-shadow-black">Request Number</span></div>
                     <div class="flex items-center gap-2 bg-black/20 px-2 py-1 rounded-md border border-white/20">
                         <span class="text-sm font-bold text-shadow-black"><i class="fas fa-star text-white text-[12px] mr-1"></i>50</span>
@@ -172,16 +173,16 @@
             <!-- Practice Options -->
             <div id="menu-practice" class="hidden flex-col gap-3 h-full">
                 <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Practice Mode</h3>
-                <button onclick="selectMode('soloTraining')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                <button onclick="selectMode('soloTraining')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5 cursor-pointer">
                     <div class="flex items-center gap-4"><i class="fas fa-user text-xl w-6 text-center text-brand-green"></i> <span class="font-bold">Solo Training</span></div>
                     <i class="fas fa-chevron-right text-gray-500"></i>
                 </button>
-                <button onclick="selectMode('simulatedTraining')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                <button onclick="selectMode('simulatedTraining')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5 cursor-pointer">
                     <div class="flex items-center gap-4"><i class="fas fa-robot text-xl w-6 text-center text-brand-orange"></i> <span class="font-bold">Virtual Game</span></div>
                     <i class="fas fa-chevron-right text-gray-500"></i>
                 </button>
                 <div class="flex-grow"></div>
-                <button onclick="showMenuSection('main')" class="bg-white/10 hover:bg-white/20 border border-white/10 font-bold py-3.5 px-8 rounded-xl w-full text-center transition mt-4 text-gray-200">
+                <button onclick="showMenuSection('main')" class="bg-white/10 hover:bg-white/20 border border-white/10 font-bold py-3.5 px-8 rounded-xl w-full text-center transition mt-4 text-gray-200 cursor-pointer">
                     <i class="fas fa-arrow-left mr-2"></i> Back to Menu
                 </button>
             </div>
@@ -189,16 +190,16 @@
             <!-- Multiplayer Options -->
             <div id="menu-multiplayer" class="hidden flex-col gap-3 h-full">
                 <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Multiplayer Mode</h3>
-                <button onclick="selectMode('friendMultiplayer')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                <button onclick="selectMode('friendMultiplayer')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5 cursor-pointer">
                     <div class="flex items-center gap-4"><i class="fas fa-users text-xl w-6 text-center text-brand-blue"></i> <span class="font-bold">Play with Friend</span></div>
                     <i class="fas fa-chevron-right text-gray-500"></i>
                 </button>
-                <button onclick="selectMode('strangerMultiplayer')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                <button onclick="selectMode('strangerMultiplayer')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5 cursor-pointer">
                     <div class="flex items-center gap-4"><i class="fas fa-globe text-xl w-6 text-center text-brand-purple"></i> <span class="font-bold">Play with Stranger</span></div>
                     <i class="fas fa-chevron-right text-gray-500"></i>
                 </button>
                 <div class="flex-grow"></div>
-                <button onclick="showMenuSection('main')" class="bg-white/10 hover:bg-white/20 border border-white/10 font-bold py-3.5 px-8 rounded-xl w-full text-center transition mt-4 text-gray-200">
+                <button onclick="showMenuSection('main')" class="bg-white/10 hover:bg-white/20 border border-white/10 font-bold py-3.5 px-8 rounded-xl w-full text-center transition mt-4 text-gray-200 cursor-pointer">
                     <i class="fas fa-arrow-left mr-2"></i> Back to Menu
                 </button>
             </div>
@@ -213,20 +214,20 @@
                         <div class="flex items-center gap-1 text-sm bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-star text-brand-gold"></i> 1</div>
                     </div>
                     <div class="flex flex-col">
-                        <button onclick="selectType('timed', 30)" class="text-left p-4 hover:bg-white/10 transition border-b border-white/5 font-medium">30 Seconds</button>
-                        <button onclick="selectType('timed', 60)" class="text-left p-4 hover:bg-white/10 transition border-b border-white/5 font-medium">60 Seconds</button>
-                        <button onclick="selectType('timed', 300)" class="text-left p-4 hover:bg-white/10 transition border-b border-white/5 font-medium">5 Minutes</button>
-                        <button onclick="selectType('timed', 600)" class="text-left p-4 hover:bg-white/10 transition font-medium">10 Minutes</button>
+                        <button onclick="selectType('timed', 30)" class="text-left p-4 hover:bg-white/10 transition border-b border-white/5 font-medium cursor-pointer">30 Seconds</button>
+                        <button onclick="selectType('timed', 60)" class="text-left p-4 hover:bg-white/10 transition border-b border-white/5 font-medium cursor-pointer">60 Seconds</button>
+                        <button onclick="selectType('timed', 300)" class="text-left p-4 hover:bg-white/10 transition border-b border-white/5 font-medium cursor-pointer">5 Minutes</button>
+                        <button onclick="selectType('timed', 600)" class="text-left p-4 hover:bg-white/10 transition font-medium cursor-pointer">10 Minutes</button>
                     </div>
                 </div>
 
-                <button id="btn-pro-mode" onclick="handleProSelect()" class="w-full flex justify-between items-center bg-black/30 p-5 rounded-xl hover:bg-black/50 transition font-bold mt-2 border border-brand-green/30 text-brand-green shadow-[0_0_10px_rgba(46,204,113,0.1)]">
+                <button id="btn-pro-mode" onclick="handleProSelect()" class="w-full flex justify-between items-center bg-black/30 p-5 rounded-xl hover:bg-black/50 transition font-bold mt-2 border border-brand-green/30 text-brand-green shadow-[0_0_10px_rgba(46,204,113,0.1)] cursor-pointer">
                     <span>Pro Game (Exact Match)</span>
                     <i class="fas fa-bullseye"></i>
                 </button>
 
                 <div class="flex-grow"></div>
-                <button id="btn-back-type" onclick="showMenuSection('practice')" class="bg-white/10 hover:bg-white/20 border border-white/10 font-bold py-3.5 px-8 rounded-xl w-full text-center transition mt-4 text-gray-200">
+                <button id="btn-back-type" onclick="showMenuSection('practice')" class="bg-white/10 hover:bg-white/20 border border-white/10 font-bold py-3.5 px-8 rounded-xl w-full text-center transition mt-4 text-gray-200 cursor-pointer">
                     <i class="fas fa-arrow-left mr-2"></i> Back
                 </button>
             </div>
@@ -239,25 +240,25 @@
                     <span id="stake-points-display" class="font-bold text-brand-gold"></span>
                 </div>
                 
-                <button onclick="startGame(pMode, 'pro', 0, 100)" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                <button onclick="startGame(pMode, 'pro', 0, 100)" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5 cursor-pointer">
                     <span class="font-bold text-blue-300">Low</span>
                     <span class="text-sm font-bold bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-star text-brand-gold text-xs mr-1"></i>100</span>
                 </button>
-                <button onclick="startGame(pMode, 'pro', 0, 1000)" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                <button onclick="startGame(pMode, 'pro', 0, 1000)" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5 cursor-pointer">
                     <span class="font-bold text-green-300">Medium</span>
                     <span class="text-sm font-bold bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-star text-brand-gold text-xs mr-1"></i>1000</span>
                 </button>
-                <button onclick="startGame(pMode, 'pro', 0, 10000)" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                <button onclick="startGame(pMode, 'pro', 0, 10000)" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5 cursor-pointer">
                     <span class="font-bold text-orange-300">High</span>
                     <span class="text-sm font-bold bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-star text-brand-gold text-xs mr-1"></i>10000</span>
                 </button>
-                <button onclick="startGame(pMode, 'pro', 0, 100000)" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                <button onclick="startGame(pMode, 'pro', 0, 100000)" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5 cursor-pointer">
                     <span class="font-bold text-red-300">Advanced</span>
                     <span class="text-sm font-bold bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-star text-brand-gold text-xs mr-1"></i>100000</span>
                 </button>
 
                 <div class="flex-grow"></div>
-                <button onclick="showMenuSection('type')" class="bg-white/10 hover:bg-white/20 border border-white/10 font-bold py-3.5 px-8 rounded-xl w-full text-center transition mt-4 text-gray-200">
+                <button onclick="showMenuSection('type')" class="bg-white/10 hover:bg-white/20 border border-white/10 font-bold py-3.5 px-8 rounded-xl w-full text-center transition mt-4 text-gray-200 cursor-pointer">
                     <i class="fas fa-arrow-left mr-2"></i> Back
                 </button>
             </div>
@@ -283,9 +284,9 @@
         </div>
         
         <div class="flex p-3 gap-2 justify-center border-b border-white/5 bg-black/10">
-            <button onclick="setStoreTab('points')" id="tab-points" class="flex-1 py-2 rounded-lg font-bold bg-white/20 shadow-sm transition">Points</button>
-            <button onclick="setStoreTab('themes')" id="tab-themes" class="flex-1 py-2 rounded-lg font-bold hover:bg-white/10 transition text-white/70 hover:text-white">Themes</button>
-            <button onclick="setStoreTab('emotes')" id="tab-emotes" class="flex-1 py-2 rounded-lg font-bold hover:bg-white/10 transition text-white/70 hover:text-white">Emotes</button>
+            <button onclick="setStoreTab('points')" id="tab-points" class="flex-1 py-2 rounded-lg font-bold bg-white/20 shadow-sm transition cursor-pointer">Points</button>
+            <button onclick="setStoreTab('themes')" id="tab-themes" class="flex-1 py-2 rounded-lg font-bold hover:bg-white/10 transition text-white/70 hover:text-white cursor-pointer">Themes</button>
+            <button onclick="setStoreTab('emotes')" id="tab-emotes" class="flex-1 py-2 rounded-lg font-bold hover:bg-white/10 transition text-white/70 hover:text-white cursor-pointer">Emotes</button>
         </div>
 
         <div class="flex-grow overflow-y-auto p-5 space-y-3" id="store-content">
@@ -302,9 +303,9 @@
         <!-- Diamond Request Modal -->
         <div id="diamond-modal" class="glass-sheet w-full max-w-sm rounded-2xl transform scale-95 opacity-0 transition-all duration-300 flex flex-col pointer-events-auto relative shadow-2xl border border-white/10">
             <div class="flex justify-between items-center p-5 border-b border-white/10 bg-black/20 rounded-t-2xl">
-                <button onclick="closeModal('diamond-modal')" class="text-gray-400 hover:text-white font-medium transition">Cancel</button>
+                <button onclick="closeModal('diamond-modal')" class="text-gray-400 hover:text-white font-medium transition cursor-pointer">Cancel</button>
                 <h2 class="text-lg font-black text-center text-brand-gold">Diamond Card</h2>
-                <button onclick="submitDiamondRequest()" class="text-brand-gold hover:text-white font-bold transition drop-shadow-[0_0_5px_rgba(255,223,0,0.5)]">Request</button>
+                <button onclick="submitDiamondRequest()" class="text-brand-gold hover:text-white font-bold transition drop-shadow-[0_0_5px_rgba(255,223,0,0.5)] cursor-pointer">Request</button>
             </div>
             <div class="p-6 flex flex-col gap-5 items-center">
                 <div class="bg-black/30 p-4 rounded-xl border border-white/5 w-full text-center">
@@ -341,7 +342,7 @@
                 <div class="mb-2" id="go-icon-container">
                     <i class="fas fa-trophy text-5xl text-brand-gold drop-shadow-[0_0_15px_rgba(255,223,0,0.6)]"></i>
                 </div>
-                <h1 id="go-title" class="text-4xl font-black mb-2 text-shadow-glow text-white tracking-wide">You Won!</h1>
+                <h1 id="go-title" class="text-4xl font-black mb-2 text-white tracking-wide">You Won!</h1>
                 <p id="go-message" class="text-base font-medium text-gray-300 mb-6 bg-black/20 px-4 py-2 rounded-lg">Pro game finished. You were closest!</p>
                 
                 <div class="flex flex-col gap-2 w-full text-sm text-white/90 mb-8 bg-black/40 p-4 rounded-xl border border-white/5">
@@ -360,10 +361,10 @@
                 </div>
 
                 <div class="w-full flex flex-col gap-3">
-                    <button onclick="restartGame()" class="w-full bg-brand-blue hover:bg-blue-400 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg text-lg">
+                    <button onclick="restartGame()" class="w-full bg-brand-blue hover:bg-blue-400 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg text-lg cursor-pointer">
                         <i class="fas fa-redo"></i> Play Again
                     </button>
-                    <button onclick="newTargetGame()" class="w-full bg-white/10 hover:bg-white/20 border border-white/10 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition">
+                    <button onclick="newTargetGame()" class="w-full bg-white/10 hover:bg-white/20 border border-white/10 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition cursor-pointer">
                         <i class="fas fa-random text-gray-300"></i> New Target
                     </button>
                 </div>
@@ -431,7 +432,7 @@
         opponentSelection: [],
         
         gameOver: false,
-        isPaused: false, // New property for tracking menu states
+        isPaused: false, // Tracks menu states
         winner: null,
         isDraw: false,
         exactPlayer: false,
@@ -456,13 +457,14 @@
         timeOfDay: 0.25, // 0 to 1
         currentWeather: 'clear', // clear, rain, snow, fog
         
-        logoState: { y: -200, active: true },
+        logoState: { y: -250, active: true },
         
         // Internal timers
         lastFrameTime: 0,
         gameTimerId: null,
         simTimerId: null,
-        targetLabelTimer: null // Timer for hiding target text
+        targetLabelTimer: null, // Timer for hiding target text
+        spawnStartTimerId: null // Timer for 3-second spawn delay
     };
 
     // --- DOM ELEMENTS ---
@@ -505,9 +507,10 @@
         GameState.currentSpeed = GameState.baseSpeed;
         
         GameState.spawningActive = false;
-        GameState.distanceSinceLastSpawn = 9999; // Triggers immediate spawn when active
+        GameState.distanceSinceLastSpawn = 0; // Strictly initialize to 0 to prevent initial overlap bugs
         
-        GameState.logoState = { y: -200, active: true };
+        GameState.logoState = { y: -250, active: true };
+        GameState.lastFrameTime = 0; // Reset last frame time for delta calculations
         DOM.fallingLayer.innerHTML = ''; 
         
         const names = ["Alex", "Jordan", "Taylor", "Morgan", "Casey"];
@@ -548,8 +551,16 @@
             DOM.opponentInfo.classList.add('hidden');
         }
 
-        setTimeout(() => {
-            if(!GameState.gameOver) GameState.spawningActive = true;
+        GameState.spawnStartTimerId = setTimeout(() => {
+            if(!GameState.gameOver && !GameState.isPaused) {
+                GameState.spawningActive = true;
+                spawnRow(); // Spawn the first row perfectly
+                GameState.distanceSinceLastSpawn = 0;
+            } else if (!GameState.gameOver) {
+                // If paused when timer hits, just set active so the gameLoop picks it up when unpaused
+                GameState.spawningActive = true;
+                GameState.distanceSinceLastSpawn = 9999; // force game loop to spawn row when unpaused
+            }
         }, 3000);
         
         // Ensure menu is closed
@@ -562,7 +573,9 @@
     function remainingOpponent() { return GameState.targetNumber - calculateOpponentSum(); }
 
     function updateGameplayUI() {
-        DOM.playerScore.textContent = GameState.yourSumHidden ? "???" : calculatePlayerSum();
+        const scoreText = GameState.yourSumHidden ? "???" : calculatePlayerSum();
+        DOM.playerScore.textContent = scoreText;
+        
         DOM.targetNumDisplay.textContent = GameState.targetNumber;
         
         if (GameState.mode !== 'soloTraining') {
@@ -677,7 +690,10 @@
             GameState.diamondRequested = false;
             GameState.requestedValue = null;
         } else if (isPw) {
-            const pws = ['🌫️', '🌍', '⏱️', '⏳'];
+            let pws = ['🌫️', '🌍'];
+            // Only spawn time powerups if it's a timed game
+            if (GameState.type === 'timed') pws.push('⏱️', '⏳');
+            
             card.powerupType = pws[rand(0, pws.length-1)];
             card.state = 'powerup';
         } else {
@@ -701,14 +717,18 @@
     }
 
     function renderCard(card) {
-        const el = document.createElement('button');
+        const el = document.createElement('div'); // Using div instead of button for better mobile touch support
         el.id = card.domId;
         // Adjust width relative to entire viewport (18vw inside each 20vw column leaves 1vw gap on each side)
-        el.className = `absolute top-0 left-0 w-[18vw] max-w-[140px] aspect-[3/4] rounded-xl sm:rounded-2xl flex items-center justify-center card-shadow transition-colors duration-200 outline-none pointer-events-auto`;
+        el.className = `absolute top-0 left-0 w-[18vw] max-w-[140px] aspect-[3/4] rounded-xl sm:rounded-2xl flex items-center justify-center card-shadow transition-colors duration-200 outline-none pointer-events-auto cursor-pointer touch-action-none`;
         el.style.transform = `translate(${card.x}px, ${card.y}px) translate(-50%, -50%)`;
         
-        // Touch + Click support
-        const trigger = (e) => { e.preventDefault(); handleCardTap(card.id); };
+        // Robust Cross-Device Touch/Click capturing
+        const trigger = (e) => { 
+            e.preventDefault(); 
+            e.stopPropagation();
+            handleCardTap(card.id); 
+        };
         el.addEventListener('mousedown', trigger);
         el.addEventListener('touchstart', trigger, {passive: false});
 
@@ -727,7 +747,7 @@
     }
 
     function handleCardTap(id) {
-        if(GameState.gameOver || GameState.playerSelection.length >= 100) return;
+        if(GameState.gameOver || GameState.playerSelection.length >= 100 || GameState.isPaused) return;
         const idx = GameState.fallingCards.findIndex(c => c.id === id);
         if(idx === -1) return;
         
@@ -738,14 +758,14 @@
 
         if (c.state === 'powerup') {
             c.state = 'playerSelection';
-            el.classList.replace('bg-brand-purple/90', 'bg-brand-green');
+            if (el) el.className = el.className.replace(/bg-\S+/, 'bg-brand-green text-white border-brand-green/50');
             applyPowerup(c.powerupType);
             setTimeout(() => removeCardVisual(id), 300);
             return;
         }
 
         c.state = 'playerSelection';
-        el.className = el.className.replace(/bg-\S+/, 'bg-brand-green text-white border-brand-green/50');
+        if (el) el.className = el.className.replace(/bg-\S+/, 'bg-brand-green text-white border-brand-green/50');
         
         GameState.playerSelection.push({...c});
         updateSpeed();
@@ -845,18 +865,29 @@
         clearInterval(GameState.gameTimerId);
         clearInterval(GameState.simTimerId);
         if (GameState.targetLabelTimer) clearTimeout(GameState.targetLabelTimer);
+        if (GameState.spawnStartTimerId) clearTimeout(GameState.spawnStartTimerId);
     }
 
     // --- ANIMATION LOOP (CARDS & BACKGROUND) ---
     function gameLoop(timestamp) {
-        const dt = timestamp - GameState.lastFrameTime;
+        // Initialize lastFrameTime on the first frame
+        if (!GameState.lastFrameTime) GameState.lastFrameTime = timestamp;
+        
+        let dt = timestamp - GameState.lastFrameTime;
+        // Prevent massive jumps if the user switches browser tabs
+        if (dt > 100) dt = 16.66; 
+        
         GameState.lastFrameTime = timestamp;
+
+        // Normalize speed to a 60fps standard (1 frame = ~16.66ms)
+        // This ensures the game runs at the exact same physical speed on 60Hz, 144Hz, or 240Hz monitors
+        const timeScale = dt / 16.666;
 
         if (!GameState.gameOver && !GameState.isPaused) {
             
             // Handle row spawning based on strictly physical distance
             if (GameState.spawningActive) {
-                GameState.distanceSinceLastSpawn += GameState.currentSpeed;
+                GameState.distanceSinceLastSpawn += GameState.currentSpeed * timeScale;
                 const containerWidth = window.innerWidth;
                 const cardWidth = Math.min(containerWidth * 0.18, 140); // Math matches max width in render class
                 const cardHeight = cardWidth * (4/3); 
@@ -864,14 +895,14 @@
                 
                 if (GameState.distanceSinceLastSpawn >= rowSpacing) {
                     spawnRow();
-                    GameState.distanceSinceLastSpawn = 0;
+                    GameState.distanceSinceLastSpawn = 0; // Using strictly 0 perfectly prevents the massive multi-spawn bug
                 }
             }
 
             // Move Cards
             for (let i = GameState.fallingCards.length - 1; i >= 0; i--) {
                 let c = GameState.fallingCards[i];
-                c.y += GameState.currentSpeed;
+                c.y += GameState.currentSpeed * timeScale;
                 
                 let el = document.getElementById(c.domId);
                 if (el) {
@@ -884,21 +915,28 @@
                 }
             }
 
-            // Move Logo
+            // Move Logo & Instructions
             if (GameState.logoState && GameState.logoState.active) {
-                GameState.logoState.y += GameState.currentSpeed;
+                GameState.logoState.y += GameState.currentSpeed * timeScale;
                 let logoEl = document.getElementById('falling-logo');
                 if (!logoEl) {
                     logoEl = document.createElement('div');
                     logoEl.id = 'falling-logo';
-                    logoEl.className = 'absolute top-0 left-0 w-full text-center pointer-events-none drop-shadow-2xl';
-                    logoEl.innerHTML = `<span class="text-6xl font-black text-white leading-tight text-shadow-glow tracking-wide">FALLING<br>CARDS</span>`;
+                    logoEl.className = 'absolute top-0 left-0 w-full text-center pointer-events-none drop-shadow-2xl flex flex-col items-center justify-center';
+                    
+                    // Added instruction text right above "FALLING CARDS"
+                    logoEl.innerHTML = `
+                        <div class="mb-4 bg-black/40 backdrop-blur-md px-5 py-2 rounded-full border border-white/10 shadow-lg">
+                            <span class="text-sm sm:text-base font-bold text-white/90 uppercase tracking-widest text-shadow">Tap cards to reach your target</span>
+                        </div>
+                        <span class="text-6xl font-black text-white leading-tight text-shadow-glow tracking-wide">FALLING<br>CARDS</span>
+                    `;
                     DOM.fallingLayer.appendChild(logoEl);
                 }
                 logoEl.style.transform = `translateY(${GameState.logoState.y}px)`;
                 if (GameState.gameOver) logoEl.style.opacity = '0.5';
 
-                if (GameState.logoState.y > window.innerHeight + 200) {
+                if (GameState.logoState.y > window.innerHeight + 300) {
                     GameState.logoState.active = false;
                     logoEl.remove();
                 }
@@ -906,7 +944,7 @@
         }
 
         // Draw Canvas Background
-        drawDynamicBackground();
+        drawDynamicBackground(timeScale);
 
         requestAnimationFrame(gameLoop);
     }
@@ -967,9 +1005,9 @@
         return `rgb(${Math.round(r1+(r2-r1)*amt)}, ${Math.round(g1+(g2-g1)*amt)}, ${Math.round(b1+(b2-b1)*amt)})`;
     }
 
-    function drawDynamicBackground() {
+    function drawDynamicBackground(timeScale = 1) {
         // Time cycle
-        GameState.timeOfDay += (1/60) / 600; // 10 min cycle
+        GameState.timeOfDay += ((1/60) / 600) * timeScale; // 10 min cycle
         if(GameState.timeOfDay > 1) GameState.timeOfDay -= 1;
 
         const time = GameState.timeOfDay;
@@ -1023,8 +1061,8 @@
         // Weather particles
         if (GameState.currentWeather !== 'clear' && GameState.currentWeather !== 'fog') {
             particles.forEach(p => {
-                p.y += p.speed;
-                if(p.type === 'snow') { p.x += rand(-5,5)/10; if(p.x<0) p.x+=canvas.width; if(p.x>canvas.width) p.x-=canvas.width; }
+                p.y += p.speed * timeScale;
+                if(p.type === 'snow') { p.x += (rand(-5,5)/10) * timeScale; if(p.x<0) p.x+=canvas.width; if(p.x>canvas.width) p.x-=canvas.width; }
                 if(p.y > canvas.height + p.len) { Object.assign(p, createParticle(-p.len)); }
                 
                 if (p.type === 'rain') {
@@ -1226,20 +1264,20 @@
     
     function setStoreTab(tab) {
         ['points', 'themes', 'emotes'].forEach(t => {
-            document.getElementById(`tab-${t}`).className = t===tab ? 'flex-1 py-2 rounded-lg font-bold bg-white/20 shadow-sm transition' : 'flex-1 py-2 rounded-lg font-bold hover:bg-white/10 transition text-white/70 hover:text-white';
+            document.getElementById(`tab-${t}`).className = t===tab ? 'flex-1 py-2 rounded-lg font-bold bg-white/20 shadow-sm transition cursor-pointer' : 'flex-1 py-2 rounded-lg font-bold hover:bg-white/10 transition text-white/70 hover:text-white cursor-pointer';
         });
         
         let html = '';
         if(tab==='points') {
             const pkgs = [[1000, "$0.99"], [5500, "$4.99"], [12000, "$9.99"], [30000, "$19.99"], [100000, "$49.99"]];
-            html = pkgs.map(p => `<div class="flex justify-between items-center bg-black/30 p-4 rounded-xl mb-3 border border-white/5 hover:bg-black/50 transition"><div class="flex items-center gap-4"><i class="fas fa-star text-brand-gold text-2xl drop-shadow-[0_0_8px_rgba(255,223,0,0.5)]"></i><span class="font-bold text-lg">${p[0].toLocaleString()} Points</span></div><button onclick="PointsManager.add(${p[0]})" class="bg-blue-500 hover:bg-blue-400 px-5 py-2 rounded-lg font-bold shadow-md transition">${p[1]}</button></div>`).join('');
-            html += `<button onclick="PointsManager.reset()" class="w-full mt-4 bg-red-500/20 text-red-400 hover:bg-red-500/30 p-3 rounded-xl font-bold text-sm transition border border-red-500/30">Reset Points (Test)</button>`;
+            html = pkgs.map(p => `<div class="flex justify-between items-center bg-black/30 p-4 rounded-xl mb-3 border border-white/5 hover:bg-black/50 transition"><div class="flex items-center gap-4"><i class="fas fa-star text-brand-gold text-2xl drop-shadow-[0_0_8px_rgba(255,223,0,0.5)]"></i><span class="font-bold text-lg">${p[0].toLocaleString()} Points</span></div><button onclick="PointsManager.add(${p[0]})" class="bg-blue-500 hover:bg-blue-400 px-5 py-2 rounded-lg font-bold shadow-md transition cursor-pointer">${p[1]}</button></div>`).join('');
+            html += `<button onclick="PointsManager.reset()" class="w-full mt-4 bg-red-500/20 text-red-400 hover:bg-red-500/30 p-3 rounded-xl font-bold text-sm transition border border-red-500/30 cursor-pointer">Reset Points (Test)</button>`;
         } else if (tab==='themes') {
             const thm = [["Default", 0, "gray"], ["Ocean", 250, "blue"], ["Forest", 250, "green"], ["Volcano", 350, "red"], ["Neon", 350, "pink"], ["Galaxy", 500, "purple"]];
-            html = thm.map(t => `<div class="flex justify-between items-center bg-black/30 p-4 rounded-xl mb-3 border border-white/5 hover:bg-black/50 transition ${PointsManager.currentPoints < t[1] && t[1]>0 ? 'opacity-60':''}"><div class="flex items-center gap-4"><i class="fas fa-paint-brush text-${t[2]}-400 text-xl w-6 text-center drop-shadow-md"></i><span class="font-bold text-lg">${t[0]}</span></div><button onclick="${t[1]>0?'PointsManager.deduct('+t[1]+')':''}" class="bg-${t[2]}-500/60 hover:bg-${t[2]}-500/80 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition" ${t[1]===0?'disabled':''}>${t[1]===0?'Owned':`<i class="fas fa-star text-brand-gold text-xs"></i>${t[1]}`}</button></div>`).join('');
+            html = thm.map(t => `<div class="flex justify-between items-center bg-black/30 p-4 rounded-xl mb-3 border border-white/5 hover:bg-black/50 transition ${PointsManager.currentPoints < t[1] && t[1]>0 ? 'opacity-60':''}"><div class="flex items-center gap-4"><i class="fas fa-paint-brush text-${t[2]}-400 text-xl w-6 text-center drop-shadow-md"></i><span class="font-bold text-lg">${t[0]}</span></div><button onclick="${t[1]>0?'PointsManager.deduct('+t[1]+')':''}" class="bg-${t[2]}-500/60 hover:bg-${t[2]}-500/80 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition cursor-pointer" ${t[1]===0?'disabled':''}>${t[1]===0?'Owned':`<i class="fas fa-star text-brand-gold text-xs"></i>${t[1]}`}</button></div>`).join('');
         } else {
             const emt = [["Thumbs Up", "👍"], ["Clapping", "👏"], ["Laughing", "😂"], ["Angry", "😡"], ["Shocked", "😱"], ["Dancing", "💃"], ["Trophy", "🏆"], ["Face Palm", "🤦‍♂️"]];
-            html = `<div class="grid grid-cols-2 gap-4">` + emt.map(e => `<div class="bg-black/30 p-5 rounded-xl border border-white/5 flex flex-col items-center gap-3 hover:bg-black/50 transition"><div class="text-5xl bg-black/20 w-20 h-20 rounded-2xl flex items-center justify-center shadow-inner">${e[1]}</div><span class="text-sm font-bold">${e[0]}</span><button onclick="PointsManager.deduct(1000)" class="bg-green-500/30 hover:bg-green-500/50 text-green-300 px-4 py-1.5 rounded-lg font-bold flex items-center gap-1.5 text-xs transition mt-1 ${PointsManager.currentPoints<1000?'opacity-50':''}"><i class="fas fa-star text-brand-gold"></i>1000</button></div>`).join('') + `</div>`;
+            html = `<div class="grid grid-cols-2 gap-4">` + emt.map(e => `<div class="bg-black/30 p-5 rounded-xl border border-white/5 flex flex-col items-center gap-3 hover:bg-black/50 transition"><div class="text-5xl bg-black/20 w-20 h-20 rounded-2xl flex items-center justify-center shadow-inner">${e[1]}</div><span class="text-sm font-bold">${e[0]}</span><button onclick="PointsManager.deduct(1000)" class="bg-green-500/30 hover:bg-green-500/50 text-green-300 px-4 py-1.5 rounded-lg font-bold flex items-center gap-1.5 text-xs transition mt-1 cursor-pointer ${PointsManager.currentPoints<1000?'opacity-50':''}"><i class="fas fa-star text-brand-gold"></i>1000</button></div>`).join('') + `</div>`;
         }
         document.getElementById('store-content').innerHTML = html;
         updatePointsUI();
