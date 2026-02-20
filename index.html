@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Falling Cards</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['ui-rounded', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            green: '#2ecc71',
+                            orange: '#f39c12',
+                            red: '#e74c3c',
+                            gold: '#FFDF00',
+                            purple: '#9b59b6',
+                            blue: '#3498db'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Utilities & Animations */
+        body { overscroll-behavior-y: none; touch-action: none; overflow: hidden; }
+        .glass-panel { background-color: rgba(20, 20, 25, 0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .glass-sheet { background-color: rgba(30, 30, 35, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .card-shadow { box-shadow: 2px 2px 3px rgba(0,0,0,0.5), -2px -2px 3px rgba(255,255,255,0.2); }
+        .text-shadow { text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .text-shadow-glow { text-shadow: 0 0 10px rgba(255,255,255,0.8); }
+        .text-shadow-black { text-shadow: 0px 1px 1px rgba(255,255,255,0.3); } /* For black card text */
+        
+        .gold-gradient { background: linear-gradient(135deg, #FFDF00, #FDBA74, #FFD700); }
+        
+        /* Hide scrollbar */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white h-[100dvh] w-full relative select-none font-sans overflow-hidden">
+
+    <!-- Dynamic Background Canvas -->
+    <canvas id="bg-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-0"></canvas>
+    
+    <!-- Fog Overlay -->
+    <div id="fog-overlay" class="absolute inset-0 bg-white/50 dark:bg-black/40 opacity-0 pointer-events-none transition-opacity duration-1000 z-0"></div>
+
+    <!-- Full-width Falling Entities Layer (Spans entire browser width) -->
+    <div id="falling-layer" class="absolute inset-0 w-full h-full pointer-events-none z-10 overflow-hidden">
+        <!-- Cards and Logo injected here. (Cards themselves will have pointer-events-auto) -->
+    </div>
+
+    <!-- Full-width Floating Top Navigation Bar (Outside max-w-lg container) -->
+    <div id="top-nav-bar" class="absolute top-4 left-4 right-4 z-40 pointer-events-none flex justify-between items-start transition-opacity duration-300">
+        
+        <!-- Hamburger Menu Button (Left End) -->
+        <div class="pointer-events-auto">
+            <button id="btn-menu-toggle" class="w-12 h-12 flex items-center justify-center bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-black/60 transition shadow-lg">
+                <i class="fas fa-bars text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Target Number & Current Score (Absolute Center) -->
+        <div class="absolute left-1/2 -translate-x-1/2 top-0 pointer-events-auto">
+            <button onclick="openHistoryModal()" class="bg-black/40 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 flex items-center gap-4 shadow-lg hover:bg-black/60 transition cursor-pointer group">
+                <div class="flex flex-col items-center justify-end">
+                    <span class="target-sum-labels text-[10px] text-gray-300 uppercase tracking-widest font-bold transition-all duration-500 ease-in-out block overflow-hidden group-hover:text-white" style="max-height: 15px; opacity: 1;">Target</span>
+                    <span id="target-number-display" class="text-2xl font-black text-brand-gold text-shadow group-hover:scale-105 transition-transform leading-none mt-0.5">999</span>
+                </div>
+                <div class="w-[2px] h-6 bg-white/30 rounded-full"></div>
+                <div class="flex flex-col items-center justify-end">
+                    <span class="target-sum-labels text-[10px] text-gray-300 uppercase tracking-widest font-bold transition-all duration-500 ease-in-out block overflow-hidden group-hover:text-white" style="max-height: 15px; opacity: 1;">Sum</span>
+                    <span id="player-score-display" class="text-2xl font-black text-white text-shadow group-hover:scale-105 transition-transform leading-none mt-0.5">0</span>
+                </div>
+            </button>
+        </div>
+
+        <!-- Points / Store Button (Right End) -->
+        <div class="pointer-events-auto">
+            <button id="btn-open-store" class="h-12 px-4 flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-full border border-white/10 hover:bg-black/60 transition shadow-lg">
+                <i class="fas fa-star text-brand-gold text-lg"></i>
+                <span id="points-display" class="font-bold text-lg text-shadow">1000</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Main Game Container (For UI Overlays - Constrained to max-w-lg) -->
+    <div id="game-container" class="relative max-w-lg mx-auto h-[100dvh] w-full pointer-events-none z-20 flex flex-col justify-between">
+        
+        <!-- Gameplay UI Header -->
+        <div class="relative z-20 w-full flex flex-col items-center pt-24 pointer-events-none">
+            <!-- Opponent Info (Hidden by default) -->
+            <div id="opponent-info" class="hidden mt-6 w-[90%] glass-panel rounded-2xl p-3 pointer-events-none border border-white/10 shadow-xl">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div id="opponent-avatar-bg" class="w-11 h-11 rounded-full bg-brand-red/70 border border-white/30 flex items-center justify-center text-xl shadow-inner">
+                            <i id="opponent-avatar" class="fas fa-robot text-white"></i>
+                        </div>
+                        <div class="flex flex-col">
+                            <span id="opponent-name" class="text-sm font-bold text-white text-shadow">Virtual Player</span>
+                            <span id="opponent-needs" class="text-xs font-medium text-white/80 text-shadow">Needs: ???</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Timed Progress Bar -->
+                <div id="timed-bar-container" class="hidden mt-3 h-2 w-full bg-black/50 rounded-full overflow-hidden relative border border-white/5">
+                    <div id="timed-bar-fill" class="h-full w-full bg-gradient-to-r from-brand-green to-brand-green/70 origin-left transition-all duration-100 shadow-[0_0_8px_rgba(46,204,113,0.8)]"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Spacer -->
+        <div class="flex-grow"></div>
+
+    </div>
+
+    <!-- Sidebar Menu Overlay (Left) -->
+    <div id="menu-backdrop" class="fixed inset-0 bg-black/60 z-40 opacity-0 pointer-events-none transition-opacity duration-300" onclick="setMenuExpanded(false)"></div>
+    
+    <!-- Sidebar Menu Panel (Left) -->
+    <div id="menu-panel" class="fixed top-0 left-0 h-full w-80 max-w-[85vw] glass-sheet z-50 transform -translate-x-full transition-transform duration-300 pointer-events-auto flex flex-col shadow-2xl border-r border-white/10">
+        
+        <!-- Header -->
+        <div class="p-5 border-b border-white/10">
+            <h2 class="text-xl font-black tracking-wide text-white">Menu</h2>
+        </div>
+
+        <!-- Scrollable Content Area -->
+        <div id="menu-content" class="p-5 flex-grow overflow-y-auto">
+            
+            <!-- Auth Status -->
+            <div id="auth-section" class="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+                <button id="btn-signin" class="w-full flex justify-between items-center bg-white/10 p-3.5 rounded-xl hover:bg-white/20 transition shadow-sm border border-white/5">
+                    <div class="flex items-center gap-3"><i class="fas fa-key text-lg text-blue-300"></i> <span class="font-bold">Sign in with Google</span></div>
+                    <i class="fas fa-chevron-right text-gray-400"></i>
+                </button>
+                <div id="user-info" class="hidden w-full flex justify-between items-center bg-black/20 p-3.5 rounded-xl border border-white/5">
+                    <div class="flex items-center gap-3"><i class="fas fa-user-circle text-brand-green text-xl"></i> <span id="username-display" class="font-bold truncate max-w-[120px]">Player</span></div>
+                    <button id="btn-signout" class="text-brand-red text-sm font-bold bg-white/5 px-3 py-1.5 rounded-lg hover:bg-brand-red/20 transition">Sign Out</button>
+                </div>
+            </div>
+
+            <!-- Main Menu Options -->
+            <div id="menu-main" class="flex flex-col gap-3">
+                <button onclick="showMenuSection('practice')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5 shadow-sm">
+                    <div class="flex items-center gap-4"><i class="fas fa-running text-xl w-6 text-center text-blue-400"></i> <span class="font-bold text-lg">Practice</span></div>
+                    <i class="fas fa-chevron-right text-gray-500"></i>
+                </button>
+                <button id="btn-multiplayer" onclick="showMenuSection('multiplayer')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition opacity-50 cursor-not-allowed border border-white/5 shadow-sm">
+                    <div class="flex items-center gap-4"><i class="fas fa-user-friends text-xl w-6 text-center text-purple-400"></i> <span class="font-bold text-lg">Multiplayer</span></div>
+                    <i class="fas fa-chevron-right text-gray-500"></i>
+                </button>
+                <button onclick="openDiamondModal()" class="flex justify-between items-center gold-gradient p-4 rounded-xl shadow-lg mt-4 text-white hover:brightness-110 transition">
+                    <div class="flex items-center gap-3"><i class="fas fa-gift text-xl w-6 text-center text-white text-shadow-black"></i> <span class="font-bold text-shadow-black">Request Number</span></div>
+                    <div class="flex items-center gap-2 bg-black/20 px-2 py-1 rounded-md border border-white/20">
+                        <span class="text-sm font-bold text-shadow-black"><i class="fas fa-star text-white text-[12px] mr-1"></i>50</span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Practice Options -->
+            <div id="menu-practice" class="hidden flex-col gap-3 h-full">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Practice Mode</h3>
+                <button onclick="selectMode('soloTraining')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                    <div class="flex items-center gap-4"><i class="fas fa-user text-xl w-6 text-center text-brand-green"></i> <span class="font-bold">Solo Training</span></div>
+                    <i class="fas fa-chevron-right text-gray-500"></i>
+                </button>
+                <button onclick="selectMode('simulatedTraining')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                    <div class="flex items-center gap-4"><i class="fas fa-robot text-xl w-6 text-center text-brand-orange"></i> <span class="font-bold">Virtual Game</span></div>
+                    <i class="fas fa-chevron-right text-gray-500"></i>
+                </button>
+                <div class="flex-grow"></div>
+                <button onclick="showMenuSection('main')" class="bg-white/10 hover:bg-white/20 border border-white/10 font-bold py-3.5 px-8 rounded-xl w-full text-center transition mt-4 text-gray-200">
+                    <i class="fas fa-arrow-left mr-2"></i> Back to Menu
+                </button>
+            </div>
+
+            <!-- Multiplayer Options -->
+            <div id="menu-multiplayer" class="hidden flex-col gap-3 h-full">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Multiplayer Mode</h3>
+                <button onclick="selectMode('friendMultiplayer')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                    <div class="flex items-center gap-4"><i class="fas fa-users text-xl w-6 text-center text-brand-blue"></i> <span class="font-bold">Play with Friend</span></div>
+                    <i class="fas fa-chevron-right text-gray-500"></i>
+                </button>
+                <button onclick="selectMode('strangerMultiplayer')" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                    <div class="flex items-center gap-4"><i class="fas fa-globe text-xl w-6 text-center text-brand-purple"></i> <span class="font-bold">Play with Stranger</span></div>
+                    <i class="fas fa-chevron-right text-gray-500"></i>
+                </button>
+                <div class="flex-grow"></div>
+                <button onclick="showMenuSection('main')" class="bg-white/10 hover:bg-white/20 border border-white/10 font-bold py-3.5 px-8 rounded-xl w-full text-center transition mt-4 text-gray-200">
+                    <i class="fas fa-arrow-left mr-2"></i> Back to Menu
+                </button>
+            </div>
+
+            <!-- Game Type Options -->
+            <div id="menu-type" class="hidden flex-col gap-3 h-full">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Select Game Type</h3>
+                
+                <div class="bg-black/30 rounded-xl overflow-hidden border border-white/5">
+                    <div class="flex justify-between items-center p-4 border-b border-white/10 font-bold text-brand-orange bg-white/5">
+                        <span>Timed Game</span>
+                        <div class="flex items-center gap-1 text-sm bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-star text-brand-gold"></i> 1</div>
+                    </div>
+                    <div class="flex flex-col">
+                        <button onclick="selectType('timed', 30)" class="text-left p-4 hover:bg-white/10 transition border-b border-white/5 font-medium">30 Seconds</button>
+                        <button onclick="selectType('timed', 60)" class="text-left p-4 hover:bg-white/10 transition border-b border-white/5 font-medium">60 Seconds</button>
+                        <button onclick="selectType('timed', 300)" class="text-left p-4 hover:bg-white/10 transition border-b border-white/5 font-medium">5 Minutes</button>
+                        <button onclick="selectType('timed', 600)" class="text-left p-4 hover:bg-white/10 transition font-medium">10 Minutes</button>
+                    </div>
+                </div>
+
+                <button id="btn-pro-mode" onclick="handleProSelect()" class="w-full flex justify-between items-center bg-black/30 p-5 rounded-xl hover:bg-black/50 transition font-bold mt-2 border border-brand-green/30 text-brand-green shadow-[0_0_10px_rgba(46,204,113,0.1)]">
+                    <span>Pro Game (Exact Match)</span>
+                    <i class="fas fa-bullseye"></i>
+                </button>
+
+                <div class="flex-grow"></div>
+                <button id="btn-back-type" onclick="showMenuSection('practice')" class="bg-white/10 hover:bg-white/20 border border-white/10 font-bold py-3.5 px-8 rounded-xl w-full text-center transition mt-4 text-gray-200">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                </button>
+            </div>
+
+            <!-- Stake Options -->
+            <div id="menu-stakes" class="hidden flex-col gap-3 h-full">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Select Pro Stake</h3>
+                <div class="bg-black/30 px-4 py-2 rounded-lg border border-white/5 mb-2 inline-flex items-center gap-2 self-start">
+                    <span class="text-sm text-gray-300">Your Points:</span>
+                    <span id="stake-points-display" class="font-bold text-brand-gold"></span>
+                </div>
+                
+                <button onclick="startGame(pMode, 'pro', 0, 100)" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                    <span class="font-bold text-blue-300">Low</span>
+                    <span class="text-sm font-bold bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-star text-brand-gold text-xs mr-1"></i>100</span>
+                </button>
+                <button onclick="startGame(pMode, 'pro', 0, 1000)" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                    <span class="font-bold text-green-300">Medium</span>
+                    <span class="text-sm font-bold bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-star text-brand-gold text-xs mr-1"></i>1000</span>
+                </button>
+                <button onclick="startGame(pMode, 'pro', 0, 10000)" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                    <span class="font-bold text-orange-300">High</span>
+                    <span class="text-sm font-bold bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-star text-brand-gold text-xs mr-1"></i>10000</span>
+                </button>
+                <button onclick="startGame(pMode, 'pro', 0, 100000)" class="flex justify-between items-center bg-black/30 p-4 rounded-xl hover:bg-black/50 transition border border-white/5">
+                    <span class="font-bold text-red-300">Advanced</span>
+                    <span class="text-sm font-bold bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-star text-brand-gold text-xs mr-1"></i>100000</span>
+                </button>
+
+                <div class="flex-grow"></div>
+                <button onclick="showMenuSection('type')" class="bg-white/10 hover:bg-white/20 border border-white/10 font-bold py-3.5 px-8 rounded-xl w-full text-center transition mt-4 text-gray-200">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Store Sidebar Overlay (Right) -->
+    <div id="store-backdrop" class="fixed inset-0 bg-black/60 z-40 opacity-0 pointer-events-none transition-opacity duration-300" onclick="setStoreExpanded(false)"></div>
+
+    <!-- Store Sidebar Panel (Right) -->
+    <div id="store-panel" class="fixed top-0 right-0 h-full w-80 max-w-[85vw] glass-sheet z-50 transform translate-x-full transition-transform duration-300 pointer-events-auto flex flex-col shadow-2xl border-l border-white/10">
+        
+        <!-- Store Header -->
+        <div class="p-5 border-b border-white/10">
+            <div class="flex items-center gap-3">
+                <h2 class="text-xl font-black tracking-wide text-white">Store</h2>
+                <div class="flex items-center gap-1.5 bg-black/30 px-2 py-1 rounded-md border border-white/5 text-sm">
+                    <i class="fas fa-star text-brand-gold"></i>
+                    <span id="store-points-display" class="font-bold text-white">1000</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex p-3 gap-2 justify-center border-b border-white/5 bg-black/10">
+            <button onclick="setStoreTab('points')" id="tab-points" class="flex-1 py-2 rounded-lg font-bold bg-white/20 shadow-sm transition">Points</button>
+            <button onclick="setStoreTab('themes')" id="tab-themes" class="flex-1 py-2 rounded-lg font-bold hover:bg-white/10 transition text-white/70 hover:text-white">Themes</button>
+            <button onclick="setStoreTab('emotes')" id="tab-emotes" class="flex-1 py-2 rounded-lg font-bold hover:bg-white/10 transition text-white/70 hover:text-white">Emotes</button>
+        </div>
+
+        <div class="flex-grow overflow-y-auto p-5 space-y-3" id="store-content">
+            <!-- Injected via JS -->
+        </div>
+    </div>
+
+
+    <!-- Modals Layer (Only for Diamond Request, History & Game Over) -->
+    <div id="modal-container" class="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div id="modal-backdrop" class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-300" onclick="closeAllModals()"></div>
+        
+        <!-- Diamond Request Modal -->
+        <div id="diamond-modal" class="glass-sheet w-full max-w-sm rounded-2xl transform scale-95 opacity-0 transition-all duration-300 flex flex-col pointer-events-auto relative shadow-2xl border border-white/10">
+            <div class="flex justify-between items-center p-5 border-b border-white/10 bg-black/20 rounded-t-2xl">
+                <button onclick="closeModal('diamond-modal')" class="text-gray-400 hover:text-white font-medium transition">Cancel</button>
+                <h2 class="text-lg font-black text-center text-brand-gold">Diamond Card</h2>
+                <button onclick="submitDiamondRequest()" class="text-brand-gold hover:text-white font-bold transition drop-shadow-[0_0_5px_rgba(255,223,0,0.5)]">Request</button>
+            </div>
+            <div class="p-6 flex flex-col gap-5 items-center">
+                <div class="bg-black/30 p-4 rounded-xl border border-white/5 w-full text-center">
+                    <p class="font-medium text-white/90 mb-1">Request a specific number</p>
+                    <p class="text-sm text-gray-400">Costs <i class="fas fa-star text-brand-gold mx-1 text-xs"></i>50 points</p>
+                </div>
+                
+                <input type="number" id="diamond-input" placeholder="-999 to 999" class="w-full bg-black/40 border border-white/20 rounded-xl p-4 text-2xl font-black text-white placeholder-gray-600 text-center focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold transition shadow-inner">
+                
+                <p id="diamond-error" class="text-brand-red text-sm font-bold hidden bg-brand-red/10 px-3 py-1 rounded-md border border-brand-red/20 w-full text-center"></p>
+                
+                <p class="text-gray-400 text-sm mt-2">Available Points: <span id="diamond-points-display" class="font-bold text-white"></span></p>
+            </div>
+        </div>
+
+        <!-- History Modal (Bottom Sheet style - Full Width) -->
+        <div id="history-modal" class="absolute bottom-0 left-0 right-0 glass-sheet w-full h-[65vh] sm:h-[500px] rounded-t-3xl transform translate-y-full transition-transform duration-300 flex flex-col pointer-events-auto shadow-2xl border-t border-white/10">
+            <div class="flex justify-center items-center p-5 border-b border-white/10 bg-black/20 rounded-t-3xl">
+                <h2 class="text-lg font-black text-center text-white tracking-wide">Best Scores</h2>
+            </div>
+            <div class="p-2 border-b border-white/5 bg-black/40 flex text-xs font-bold text-gray-400 uppercase tracking-wider px-6">
+                <div class="w-1/3">Cards Used</div>
+                <div class="w-1/3 text-center">Target</div>
+                <div class="w-1/3 text-right">Date</div>
+            </div>
+            <div id="history-content" class="flex-grow overflow-y-auto p-4 space-y-2">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+
+        <!-- Game Over Modal -->
+        <div id="game-over-modal" class="absolute inset-0 flex items-center justify-center p-4 transform scale-95 opacity-0 transition-all duration-300 pointer-events-none">
+            <div class="glass-sheet w-full max-w-md p-8 rounded-[2rem] shadow-2xl flex flex-col items-center pointer-events-auto text-center border border-white/10">
+                <div class="mb-2" id="go-icon-container">
+                    <i class="fas fa-trophy text-5xl text-brand-gold drop-shadow-[0_0_15px_rgba(255,223,0,0.6)]"></i>
+                </div>
+                <h1 id="go-title" class="text-4xl font-black mb-2 text-shadow-glow text-white tracking-wide">You Won!</h1>
+                <p id="go-message" class="text-base font-medium text-gray-300 mb-6 bg-black/20 px-4 py-2 rounded-lg">Pro game finished. You were closest!</p>
+                
+                <div class="flex flex-col gap-2 w-full text-sm text-white/90 mb-8 bg-black/40 p-4 rounded-xl border border-white/5">
+                    <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                        <span class="text-gray-400">Target</span>
+                        <span id="go-target-score" class="font-bold text-brand-gold text-lg">0</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1">
+                        <span class="text-gray-400">Your Sum</span>
+                        <span id="go-player-score" class="font-bold text-white">0</span>
+                    </div>
+                    <div id="go-opponent-container" class="flex justify-between items-center pt-1 border-t border-white/5 hidden">
+                        <span id="go-opponent-label" class="text-gray-400 truncate max-w-[150px]">Virtual Player</span>
+                        <span id="go-opponent-score" class="font-bold text-white">0</span>
+                    </div>
+                </div>
+
+                <div class="w-full flex flex-col gap-3">
+                    <button onclick="restartGame()" class="w-full bg-brand-blue hover:bg-blue-400 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg text-lg">
+                        <i class="fas fa-redo"></i> Play Again
+                    </button>
+                    <button onclick="newTargetGame()" class="w-full bg-white/10 hover:bg-white/20 border border-white/10 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition">
+                        <i class="fas fa-random text-gray-300"></i> New Target
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    // --- UTILS & CONSTANTS ---
+    const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+    const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+    
+    const PowerupType = {
+        FOG: '🌫️', FIRE: '🔥', EARTH: '🌍', TIME10: '⏱️', TIME25: '⏳', DIAMOND: '💎'
+    };
+    
+    // --- STATE MANAGEMENT ---
+    const PointsManager = {
+        currentPoints: 1000,
+        load() { this.currentPoints = parseInt(localStorage.getItem('fn_points')) || 1000; },
+        save() { localStorage.setItem('fn_points', this.currentPoints); updatePointsUI(); },
+        add(pts) { this.currentPoints += pts; this.save(); },
+        deduct(pts) { if(this.currentPoints >= pts) { this.currentPoints -= pts; this.save(); return true; } return false; },
+        reset() { this.currentPoints = 1000; this.save(); }
+    };
+
+    const HistoryManager = {
+        records: [],
+        load() { 
+            try {
+                this.records = JSON.parse(localStorage.getItem('fn_history')) || [];
+            } catch(e) {
+                this.records = [];
+            }
+        },
+        save() { localStorage.setItem('fn_history', JSON.stringify(this.records)); },
+        addRecord(target, cardsUsed) {
+            this.records.push({
+                target: target,
+                cardsUsed: cardsUsed,
+                date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+                timestamp: Date.now()
+            });
+            // Sort by lowest cards used first
+            this.records.sort((a, b) => a.cardsUsed - b.cardsUsed);
+            if (this.records.length > 50) this.records = this.records.slice(0, 50); // Keep top 50
+            this.save();
+        }
+    };
+
+    const GameState = {
+        mode: 'soloTraining', // soloTraining, simulatedTraining, friendMultiplayer, strangerMultiplayer
+        type: 'pro', // timed, pro
+        duration: 60,
+        stake: 100,
+        targetNumber: 0,
+        
+        isSignedIn: false,
+        username: 'Player',
+        opponentName: 'Virtual Player',
+        
+        fallingCards: [],
+        playerSelection: [],
+        opponentSelection: [],
+        
+        gameOver: false,
+        isPaused: false, // New property for tracking menu states
+        winner: null,
+        isDraw: false,
+        exactPlayer: false,
+        exactOpponent: false,
+        
+        timeRemaining: 60,
+        timerRunning: false,
+        
+        baseSpeed: 2.5,
+        maxSpeed: 6.5,
+        currentSpeed: 2.5,
+        cardSpawnFreq: 700,
+        
+        opponentNumbersHidden: false,
+        yourSumHidden: false,
+        diamondRequested: false,
+        requestedValue: null,
+        
+        spawningActive: false,
+        distanceSinceLastSpawn: 0,
+        
+        timeOfDay: 0.25, // 0 to 1
+        currentWeather: 'clear', // clear, rain, snow, fog
+        
+        logoState: { y: -200, active: true },
+        
+        // Internal timers
+        lastFrameTime: 0,
+        gameTimerId: null,
+        simTimerId: null,
+        targetLabelTimer: null // Timer for hiding target text
+    };
+
+    // --- DOM ELEMENTS ---
+    const DOM = {
+        fallingLayer: document.getElementById('falling-layer'),
+        playerScore: document.getElementById('player-score-display'),
+        targetNumDisplay: document.getElementById('target-number-display'),
+        ptsDisplay: document.getElementById('points-display'),
+        opponentInfo: document.getElementById('opponent-info'),
+        opponentName: document.getElementById('opponent-name'),
+        opponentNeeds: document.getElementById('opponent-needs'),
+        timedBarContainer: document.getElementById('timed-bar-container'),
+        timedBarFill: document.getElementById('timed-bar-fill'),
+        topNavBar: document.getElementById('top-nav-bar')
+    };
+
+    // --- CORE GAME LOGIC ---
+    function initGame(mode, type, duration = 60, stake = 100) {
+        clearAllTimers();
+        
+        GameState.mode = mode;
+        GameState.type = type;
+        GameState.duration = duration;
+        GameState.stake = stake;
+        
+        GameState.targetNumber = rand(1, 999);
+        GameState.fallingCards = [];
+        GameState.playerSelection = [];
+        GameState.opponentSelection = [];
+        GameState.gameOver = false;
+        GameState.isPaused = false;
+        GameState.winner = null;
+        GameState.isDraw = false;
+        GameState.exactPlayer = false;
+        GameState.exactOpponent = false;
+        GameState.diamondRequested = false;
+        GameState.requestedValue = null;
+        GameState.opponentNumbersHidden = false;
+        GameState.yourSumHidden = false;
+        GameState.currentSpeed = GameState.baseSpeed;
+        
+        GameState.spawningActive = false;
+        GameState.distanceSinceLastSpawn = 9999; // Triggers immediate spawn when active
+        
+        GameState.logoState = { y: -200, active: true };
+        DOM.fallingLayer.innerHTML = ''; 
+        
+        const names = ["Alex", "Jordan", "Taylor", "Morgan", "Casey"];
+        GameState.opponentName = names[rand(0, names.length-1)];
+        
+        updateGameplayUI();
+
+        // Target & Sum Labels Fade Out Logic
+        const topLabels = document.querySelectorAll('.target-sum-labels');
+        topLabels.forEach(label => {
+            label.style.opacity = '1';
+            label.style.maxHeight = '15px';
+        });
+        
+        GameState.targetLabelTimer = setTimeout(() => {
+            topLabels.forEach(label => {
+                label.style.opacity = '0';
+                label.style.maxHeight = '0px';
+            });
+        }, 5000);
+        
+        if (type === 'timed') {
+            GameState.timeRemaining = duration;
+            startGameTimer();
+            DOM.timedBarContainer.classList.remove('hidden');
+        } else {
+            DOM.timedBarContainer.classList.add('hidden');
+        }
+
+        if (mode === 'simulatedTraining') {
+            DOM.opponentInfo.classList.remove('hidden');
+            GameState.simTimerId = setInterval(simulateOpponent, 1200);
+        } else if (mode.includes('Multiplayer')) {
+            DOM.opponentInfo.classList.remove('hidden');
+            // Mock multiplayer - just act like simulated for now
+            GameState.simTimerId = setInterval(simulateOpponent, 1200);
+        } else {
+            DOM.opponentInfo.classList.add('hidden');
+        }
+
+        setTimeout(() => {
+            if(!GameState.gameOver) GameState.spawningActive = true;
+        }, 3000);
+        
+        // Ensure menu is closed
+        setMenuExpanded(false);
+    }
+
+    function calculatePlayerSum() { return GameState.playerSelection.reduce((sum, c) => sum + c.value, 0); }
+    function calculateOpponentSum() { return GameState.opponentSelection.reduce((sum, c) => sum + c.value, 0); }
+    function remainingPlayer() { return GameState.targetNumber - calculatePlayerSum(); }
+    function remainingOpponent() { return GameState.targetNumber - calculateOpponentSum(); }
+
+    function updateGameplayUI() {
+        DOM.playerScore.textContent = GameState.yourSumHidden ? "???" : calculatePlayerSum();
+        DOM.targetNumDisplay.textContent = GameState.targetNumber;
+        
+        if (GameState.mode !== 'soloTraining') {
+            DOM.opponentName.textContent = GameState.opponentName;
+            DOM.opponentNeeds.textContent = "Needs: " + (GameState.opponentNumbersHidden ? "???" : remainingOpponent());
+            if (remainingOpponent() === 0) DOM.opponentNeeds.classList.replace('text-white/80', 'text-brand-gold');
+            else DOM.opponentNeeds.classList.replace('text-brand-gold', 'text-white/80');
+        }
+    }
+
+    function startGameTimer() {
+        GameState.timerRunning = true;
+        GameState.gameTimerId = setInterval(() => {
+            if (GameState.isPaused) return; // Halt timer during menu
+
+            if (GameState.timeRemaining > 0.1) {
+                GameState.timeRemaining -= 0.1;
+                updateTimedBar();
+            } else {
+                GameState.timeRemaining = 0;
+                clearInterval(GameState.gameTimerId);
+                timeExpired();
+            }
+        }, 100);
+    }
+
+    function updateTimedBar() {
+        const prog = Math.max(0, Math.min(1, GameState.timeRemaining / GameState.duration));
+        DOM.timedBarFill.style.width = `${prog * 100}%`;
+        
+        let color = 'from-brand-red to-brand-red/70';
+        if (prog > 0.5) color = 'from-brand-green to-brand-green/70';
+        else if (prog > 0.2) color = 'from-brand-orange to-brand-orange/70';
+        
+        DOM.timedBarFill.className = `h-full w-full bg-gradient-to-r ${color} origin-left transition-all duration-100 shadow-[0_0_8px_rgba(46,204,113,0.8)]`;
+    }
+
+    function timeExpired() {
+        const pSum = calculatePlayerSum(), oSum = calculateOpponentSum();
+        const pDiff = Math.abs(GameState.targetNumber - pSum);
+        const oDiff = Math.abs(GameState.targetNumber - oSum);
+        
+        GameState.exactPlayer = (pSum === GameState.targetNumber);
+        GameState.exactOpponent = (oSum === GameState.targetNumber);
+        
+        if (GameState.mode === 'soloTraining') endGame(null);
+        else if (pDiff < oDiff) endGame('human');
+        else if (oDiff < pDiff) endGame('opponent');
+        else { GameState.isDraw = true; endGame(null); }
+    }
+
+    function checkProWin() {
+        if (GameState.type !== 'pro' || GameState.gameOver) return;
+        if (calculatePlayerSum() === GameState.targetNumber) {
+            GameState.exactPlayer = true;
+            endGame('human');
+        }
+    }
+
+    function endGame(winner) {
+        if(GameState.gameOver) return;
+        GameState.gameOver = true;
+        GameState.winner = winner;
+        clearAllTimers();
+
+        // Record History if Exact Match
+        if (winner === 'human' && GameState.exactPlayer) {
+            HistoryManager.addRecord(GameState.targetNumber, GameState.playerSelection.length);
+        }
+
+        // Points logic
+        if (GameState.mode.includes('Multiplayer')) {
+            if (winner === 'human') {
+                if(GameState.type === 'timed') {
+                    let pts = GameState.duration <= 30 ? 5 : (GameState.duration <= 60 ? 10 : 25);
+                    if (GameState.exactPlayer) pts += 50;
+                    PointsManager.add(pts);
+                } else {
+                    let winnings = GameState.stake * 2;
+                    if(GameState.exactPlayer) winnings += 100;
+                    PointsManager.add(winnings);
+                }
+            } else if (GameState.isDraw && GameState.type === 'pro') {
+                PointsManager.add(GameState.stake); // return stake
+            }
+        }
+
+        setTimeout(showGameOverOverlay, 500);
+    }
+
+    // --- CARDS & ENTITIES ---
+    function spawnRow() {
+        const containerWidth = window.innerWidth;
+        const cols = 5;
+        const colWidth = containerWidth / cols;
+        
+        for (let i = 0; i < cols; i++) {
+            let x = (i * colWidth) + (colWidth / 2);
+            spawnCardAt(x, -250); // Spawn higher to ensure off-screen for bigger cards
+        }
+    }
+
+    function spawnCardAt(x, y) {
+        const isReq = GameState.requestedValue !== null && rand(1, 100) <= 40;
+        const isPw = rand(1, 100) <= 4; // reduced chance because 5 spawn at once
+        
+        let card = { id: Date.now() + Math.random(), x: x, y: y, state: 'available', value: 0, powerupType: null, domId: '' };
+
+        if (isReq) {
+            card.value = GameState.requestedValue;
+            card.state = 'diamondRequest';
+            GameState.diamondRequested = false;
+            GameState.requestedValue = null;
+        } else if (isPw) {
+            const pws = ['🌫️', '🌍', '⏱️', '⏳'];
+            card.powerupType = pws[rand(0, pws.length-1)];
+            card.state = 'powerup';
+        } else {
+            // Number logic
+            const need = remainingPlayer();
+            if (rand(1, 100) <= 25 && Math.abs(need) < 1000 && need !== 0) {
+                let range = Math.floor(Math.max(25, Math.abs(need)/4));
+                let min = Math.max(-999, need - range), max = Math.min(999, need + range);
+                card.value = rand(min, max);
+            } else if (rand(1, 100) <= 50) {
+                card.value = rand(1, 100) <= 50 ? rand(1, 30) : rand(-30, -1);
+            } else {
+                card.value = rand(-999, 999);
+            }
+            if(card.value === 0) card.value = 1;
+        }
+
+        card.domId = `card-${card.id}`;
+        GameState.fallingCards.push(card);
+        renderCard(card);
+    }
+
+    function renderCard(card) {
+        const el = document.createElement('button');
+        el.id = card.domId;
+        // Adjust width relative to entire viewport (18vw inside each 20vw column leaves 1vw gap on each side)
+        el.className = `absolute top-0 left-0 w-[18vw] max-w-[140px] aspect-[3/4] rounded-xl sm:rounded-2xl flex items-center justify-center card-shadow transition-colors duration-200 outline-none pointer-events-auto`;
+        el.style.transform = `translate(${card.x}px, ${card.y}px) translate(-50%, -50%)`;
+        
+        // Touch + Click support
+        const trigger = (e) => { e.preventDefault(); handleCardTap(card.id); };
+        el.addEventListener('mousedown', trigger);
+        el.addEventListener('touchstart', trigger, {passive: false});
+
+        if (card.state === 'powerup') {
+            el.classList.add('bg-brand-purple/90', 'border', 'border-white/20');
+            el.innerHTML = `<span class="text-[8vw] sm:text-5xl md:text-6xl text-shadow">${card.powerupType}</span>`;
+        } else if (card.state === 'diamondRequest') {
+            el.classList.add('bg-brand-gold', 'border', 'border-orange-300');
+            el.innerHTML = `<span class="text-[6vw] sm:text-4xl md:text-5xl font-black text-black text-shadow-black">${card.value}</span>`;
+        } else {
+            el.classList.add('bg-white/95', 'border', 'border-gray-300');
+            el.innerHTML = `<span class="text-[6vw] sm:text-4xl md:text-5xl font-black text-black text-shadow-black">${card.value}</span>`;
+        }
+        
+        DOM.fallingLayer.appendChild(el);
+    }
+
+    function handleCardTap(id) {
+        if(GameState.gameOver || GameState.playerSelection.length >= 100) return;
+        const idx = GameState.fallingCards.findIndex(c => c.id === id);
+        if(idx === -1) return;
+        
+        let c = GameState.fallingCards[idx];
+        if (c.state !== 'available' && c.state !== 'diamondRequest' && c.state !== 'powerup') return;
+
+        const el = document.getElementById(c.domId);
+
+        if (c.state === 'powerup') {
+            c.state = 'playerSelection';
+            el.classList.replace('bg-brand-purple/90', 'bg-brand-green');
+            applyPowerup(c.powerupType);
+            setTimeout(() => removeCardVisual(id), 300);
+            return;
+        }
+
+        c.state = 'playerSelection';
+        el.className = el.className.replace(/bg-\S+/, 'bg-brand-green text-white border-brand-green/50');
+        
+        GameState.playerSelection.push({...c});
+        updateSpeed();
+        updateGameplayUI();
+        checkProWin();
+
+        setTimeout(() => removeCardVisual(id), 300);
+    }
+
+    function removeCardVisual(id) {
+        const el = document.getElementById(`card-${id}`);
+        if(el) el.remove();
+        GameState.fallingCards = GameState.fallingCards.filter(c => c.id !== id);
+    }
+
+    function applyPowerup(type) {
+        if (type === '⏱️') { if(GameState.type==='timed') GameState.timeRemaining += 10; }
+        else if (type === '⏳') { if(GameState.type==='timed') GameState.timeRemaining += 25; }
+        else if (type === '🌫️') {
+            GameState.opponentNumbersHidden = true;
+            updateGameplayUI();
+            setTimeout(() => { GameState.opponentNumbersHidden = false; updateGameplayUI(); }, 10000);
+        }
+        else if (type === '🌍') {
+            GameState.yourSumHidden = true;
+            updateGameplayUI();
+            setTimeout(() => { GameState.yourSumHidden = false; updateGameplayUI(); }, 10000);
+        }
+    }
+
+    function updateSpeed() {
+        const pDiff = Math.abs(remainingPlayer());
+        let diff = pDiff;
+        if (GameState.mode !== 'soloTraining') diff = Math.min(pDiff, Math.abs(remainingOpponent()));
+        
+        const prog = 1.0 - Math.min(1.0, diff / 500.0);
+        GameState.currentSpeed = GameState.baseSpeed + (GameState.maxSpeed - GameState.baseSpeed) * prog;
+    }
+
+    // --- OPPONENT AI ---
+    function simulateOpponent() {
+        if(GameState.gameOver || GameState.opponentSelection.length >= 100 || GameState.isPaused) return; // Halt logic during menu
+        
+        const vis = GameState.fallingCards.filter(c => 
+            (c.state === 'available' || c.state === 'powerup' || c.state === 'diamondRequest') && c.y > 50 && c.y < window.innerHeight - 150
+        );
+        if(vis.length === 0) return;
+
+        let best = null;
+        let need = remainingOpponent();
+
+        let exact = vis.find(c => c.state !== 'powerup' && c.value === need);
+        if (exact) best = exact;
+        else {
+            let pw = vis.find(c => c.state === 'powerup' && c.powerupType !== '🌫️' && c.powerupType !== '🌍');
+            if (pw && rand(1, 100) > 15) best = pw;
+            else {
+                let smallestDiff = Math.abs(need);
+                let nums = vis.filter(c => c.state !== 'powerup').sort((a,b) => Math.abs(need-a.value) - Math.abs(need-b.value));
+                if (nums.length > 0) {
+                    if (Math.abs(need - nums[0].value) < smallestDiff || vis.length === 1) best = nums[0];
+                }
+                if (!best) best = vis.filter(c=>c.state==='available')[rand(0, vis.filter(c=>c.state==='available').length-1)];
+            }
+        }
+
+        if (best) {
+            let idx = GameState.fallingCards.findIndex(c => c.id === best.id);
+            if(idx > -1 && ['available', 'powerup', 'diamondRequest'].includes(GameState.fallingCards[idx].state)) {
+                let c = GameState.fallingCards[idx];
+                const el = document.getElementById(c.domId);
+                
+                if (c.state === 'powerup') {
+                    c.state = 'opponentSelection';
+                    if(el) el.classList.replace('bg-brand-purple/90', 'bg-brand-red');
+                    setTimeout(() => removeCardVisual(c.id), 300);
+                    return;
+                }
+
+                c.state = 'opponentSelection';
+                if(el) el.className = el.className.replace(/bg-\S+/, 'bg-brand-red text-white border-brand-red/50');
+                GameState.opponentSelection.push({...c});
+                updateSpeed();
+                updateGameplayUI();
+
+                setTimeout(() => removeCardVisual(c.id), 300);
+
+                if (GameState.type === 'pro' && calculateOpponentSum() === GameState.targetNumber) {
+                    GameState.exactOpponent = true;
+                    endGame('opponent');
+                }
+            }
+        }
+    }
+
+    function clearAllTimers() {
+        clearInterval(GameState.gameTimerId);
+        clearInterval(GameState.simTimerId);
+        if (GameState.targetLabelTimer) clearTimeout(GameState.targetLabelTimer);
+    }
+
+    // --- ANIMATION LOOP (CARDS & BACKGROUND) ---
+    function gameLoop(timestamp) {
+        const dt = timestamp - GameState.lastFrameTime;
+        GameState.lastFrameTime = timestamp;
+
+        if (!GameState.gameOver && !GameState.isPaused) {
+            
+            // Handle row spawning based on strictly physical distance
+            if (GameState.spawningActive) {
+                GameState.distanceSinceLastSpawn += GameState.currentSpeed;
+                const containerWidth = window.innerWidth;
+                const cardWidth = Math.min(containerWidth * 0.18, 140); // Math matches max width in render class
+                const cardHeight = cardWidth * (4/3); 
+                const rowSpacing = cardHeight * 1.5; // Gap of a half card vertically
+                
+                if (GameState.distanceSinceLastSpawn >= rowSpacing) {
+                    spawnRow();
+                    GameState.distanceSinceLastSpawn = 0;
+                }
+            }
+
+            // Move Cards
+            for (let i = GameState.fallingCards.length - 1; i >= 0; i--) {
+                let c = GameState.fallingCards[i];
+                c.y += GameState.currentSpeed;
+                
+                let el = document.getElementById(c.domId);
+                if (el) {
+                    el.style.transform = `translate(${c.x}px, ${c.y}px) translate(-50%, -50%)`;
+                    if(GameState.gameOver) el.style.opacity = '0.5';
+                }
+
+                if (c.y > window.innerHeight + 250 && ['available', 'powerup', 'diamondRequest'].includes(c.state)) {
+                    removeCardVisual(c.id);
+                }
+            }
+
+            // Move Logo
+            if (GameState.logoState && GameState.logoState.active) {
+                GameState.logoState.y += GameState.currentSpeed;
+                let logoEl = document.getElementById('falling-logo');
+                if (!logoEl) {
+                    logoEl = document.createElement('div');
+                    logoEl.id = 'falling-logo';
+                    logoEl.className = 'absolute top-0 left-0 w-full text-center pointer-events-none drop-shadow-2xl';
+                    logoEl.innerHTML = `<span class="text-6xl font-black text-white leading-tight text-shadow-glow tracking-wide">FALLING<br>CARDS</span>`;
+                    DOM.fallingLayer.appendChild(logoEl);
+                }
+                logoEl.style.transform = `translateY(${GameState.logoState.y}px)`;
+                if (GameState.gameOver) logoEl.style.opacity = '0.5';
+
+                if (GameState.logoState.y > window.innerHeight + 200) {
+                    GameState.logoState.active = false;
+                    logoEl.remove();
+                }
+            }
+        }
+
+        // Draw Canvas Background
+        drawDynamicBackground();
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    // --- CANVAS BACKGROUND SYSTEM ---
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    let particles = [];
+    let stars = [];
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        initStars();
+        initParticles();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function initStars() {
+        stars = [];
+        for(let i=0; i<100; i++) {
+            stars.push({
+                x: rand(0, canvas.width),
+                y: rand(0, canvas.height * 0.8),
+                size: rand(5, 20) / 10,
+                opacity: rand(20, 90) / 100,
+                speed: rand(10, 30) / 10,
+                offset: rand(0, Math.PI * 2)
+            });
+        }
+    }
+
+    function initParticles() {
+        particles = [];
+        if (GameState.currentWeather === 'clear' || GameState.currentWeather === 'fog') return;
+        for(let i=0; i<150; i++) {
+            particles.push(createParticle());
+        }
+    }
+
+    function createParticle(startY) {
+        let p = { x: rand(0, canvas.width), y: startY || rand(-50, 0) };
+        if (GameState.currentWeather === 'rain') {
+            p.speed = rand(10, 20); p.len = rand(15, 30); p.op = rand(30, 70)/100; p.type = 'rain';
+        } else {
+            p.speed = rand(10, 30)/10; p.len = rand(2, 5); p.op = rand(50, 100)/100; p.type = 'snow';
+        }
+        return p;
+    }
+
+    function hexToRgb(hex) {
+        let r=0,g=0,b=0;
+        if(hex.length===7){ r=parseInt(hex.slice(1,3),16); g=parseInt(hex.slice(3,5),16); b=parseInt(hex.slice(5,7),16); }
+        return [r,g,b];
+    }
+    function lerpColor(c1, c2, amt) {
+        let [r1,g1,b1] = hexToRgb(c1); let [r2,g2,b2] = hexToRgb(c2);
+        return `rgb(${Math.round(r1+(r2-r1)*amt)}, ${Math.round(g1+(g2-g1)*amt)}, ${Math.round(b1+(b2-b1)*amt)})`;
+    }
+
+    function drawDynamicBackground() {
+        // Time cycle
+        GameState.timeOfDay += (1/60) / 600; // 10 min cycle
+        if(GameState.timeOfDay > 1) GameState.timeOfDay -= 1;
+
+        const time = GameState.timeOfDay;
+        let tCol, bCol, smOp;
+        
+        const mid = '#0b0c1e', dawn = '#4a4e69', sunr = '#fca311', dayT = '#87CEEB', dayB = '#ADD8E6', suns = '#e76f51', dusk = '#264653';
+
+        if(time<0.25) { let p=time/0.25; tCol=lerpColor(mid,dawn,p); bCol=lerpColor(mid,sunr,p); smOp=1-p; }
+        else if(time<0.35) { let p=(time-0.25)/0.1; tCol=lerpColor(dawn,dayT,p); bCol=lerpColor(sunr,dayB,p); smOp=p; }
+        else if(time<0.65) { tCol=dayT; bCol=dayB; smOp=1; }
+        else if(time<0.75) { let p=(time-0.65)/0.1; tCol=lerpColor(dayT,dusk,p); bCol=lerpColor(dayB,suns,p); smOp=1-p; }
+        else { let p=(time-0.75)/0.25; tCol=lerpColor(dusk,mid,p); bCol=lerpColor(suns,mid,p); smOp=p; }
+
+        let grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grd.addColorStop(0, tCol);
+        grd.addColorStop(1, bCol);
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const isNight = time < 0.25 || time > 0.75;
+        
+        if (isNight) {
+            let nProg = time>=0.75 ? (time-0.75)/0.25 : 1-(time/0.25);
+            let tNow = Date.now()/1000;
+            stars.forEach(s => {
+                let tw = (Math.sin(tNow * s.speed + s.offset) + 1)/2;
+                ctx.fillStyle = `rgba(255,255,255, ${s.opacity * (0.5 + tw*0.5) * nProg})`;
+                ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
+            });
+        }
+
+        // Sun/Moon
+        let hStart = 0.2, hEnd = 0.8;
+        let nTime = time < 0.25 ? hEnd - ((0.25-time)/0.25)*0.25 : (time > 0.75 ? hStart + ((time-0.75)/0.25)*0.25 : clamp(time, hStart, hEnd));
+        let p = (nTime - hStart) / (hEnd - hStart);
+        let angle = p * Math.PI;
+        
+        let cX = canvas.width/2, cY = canvas.height*0.8;
+        let rX = canvas.width/2*1.1, rY = canvas.height*0.7;
+        let sx = cX - rX * Math.cos(angle), sy = cY - rY * Math.sin(angle);
+
+        ctx.globalAlpha = smOp;
+        ctx.fillStyle = isNight ? 'rgba(255,255,255,0.8)' : '#FFDF00';
+        ctx.beginPath(); ctx.arc(sx, sy, 30, 0, Math.PI*2); ctx.fill();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = isNight ? 'rgba(255,255,255,0.15)' : 'rgba(255,223,0,0.2)';
+        ctx.beginPath(); ctx.arc(sx, sy, 45, 0, Math.PI*2); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1.0;
+
+        // Weather particles
+        if (GameState.currentWeather !== 'clear' && GameState.currentWeather !== 'fog') {
+            particles.forEach(p => {
+                p.y += p.speed;
+                if(p.type === 'snow') { p.x += rand(-5,5)/10; if(p.x<0) p.x+=canvas.width; if(p.x>canvas.width) p.x-=canvas.width; }
+                if(p.y > canvas.height + p.len) { Object.assign(p, createParticle(-p.len)); }
+                
+                if (p.type === 'rain') {
+                    ctx.strokeStyle = `rgba(255,255,255,${p.op})`;
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x, p.y+p.len); ctx.stroke();
+                } else {
+                    ctx.fillStyle = `rgba(255,255,255,${p.op})`;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.len, 0, Math.PI*2); ctx.fill();
+                }
+            });
+        }
+    }
+
+    // Weather Timer
+    setInterval(() => {
+        const weathers = ['clear', 'rain', 'snow', 'fog'];
+        GameState.currentWeather = weathers.filter(w=>w!==GameState.currentWeather)[rand(0,2)];
+        initParticles();
+        document.getElementById('fog-overlay').style.opacity = GameState.currentWeather === 'fog' ? '1' : '0';
+    }, 120000); // 2 mins
+
+    // --- UI INTERACTIONS ---
+
+    function updatePauseState() {
+        GameState.isPaused = menuExpanded || storeExpanded || document.getElementById('modal-backdrop').classList.contains('opacity-100');
+    }
+
+    let menuExpanded = false;
+    function setMenuExpanded(exp) {
+        menuExpanded = exp;
+        const panel = document.getElementById('menu-panel');
+        const backdrop = document.getElementById('menu-backdrop');
+        
+        if(exp) {
+            setStoreExpanded(false); // Close store if open
+            panel.classList.remove('-translate-x-full');
+            panel.classList.add('translate-x-0');
+            backdrop.classList.remove('opacity-0', 'pointer-events-none');
+            backdrop.classList.add('opacity-100', 'pointer-events-auto');
+        } else {
+            panel.classList.remove('translate-x-0');
+            panel.classList.add('-translate-x-full');
+            backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => showMenuSection('main'), 300); // Reset after closing
+        }
+        updatePauseState();
+    }
+
+    let storeExpanded = false;
+    function setStoreExpanded(exp) {
+        storeExpanded = exp;
+        const panel = document.getElementById('store-panel');
+        const backdrop = document.getElementById('store-backdrop');
+        
+        if(exp) {
+            setMenuExpanded(false); // Close menu if open
+            panel.classList.remove('translate-x-full');
+            panel.classList.add('translate-x-0');
+            backdrop.classList.remove('opacity-0', 'pointer-events-none');
+            backdrop.classList.add('opacity-100', 'pointer-events-auto');
+        } else {
+            panel.classList.remove('translate-x-0');
+            panel.classList.add('translate-x-full');
+            backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+        }
+        updatePauseState();
+    }
+
+    document.getElementById('btn-menu-toggle').addEventListener('click', () => setMenuExpanded(true));
+
+    function showMenuSection(id) {
+        ['main', 'practice', 'multiplayer', 'type', 'stakes'].forEach(s => {
+            document.getElementById(`menu-${s}`).classList.add('hidden');
+            document.getElementById(`menu-${s}`).classList.remove('flex');
+        });
+        document.getElementById(`menu-${id}`).classList.remove('hidden');
+        document.getElementById(`menu-${id}`).classList.add('flex');
+    }
+
+    let pMode = null, pType = null;
+    function selectMode(m) { pMode = m; showMenuSection('type'); }
+    function selectType(t, d=60) {
+        pType = t;
+        if(t==='timed') startGame(pMode, t, d, 0);
+        else showMenuSection('stakes');
+    }
+    function handleProSelect() {
+        if(pMode === 'soloTraining' || pMode === 'simulatedTraining') startGame(pMode, 'pro', 0, 0);
+        else showMenuSection('stakes');
+    }
+
+    // UPDATED: Fixed null reference by defaulting `m` to GameState.mode
+    function startGame(m, t, d, s) {
+        let modeToStart = m || GameState.mode;
+        
+        if (modeToStart.includes('Multiplayer') && !GameState.isSignedIn) { alert("Please sign in first!"); return; }
+        if (t === 'pro' && s > 0 && !PointsManager.deduct(s)) { alert("Not enough points!"); return; }
+        if (modeToStart.includes('Training') && PointsManager.currentPoints >= 1) PointsManager.deduct(1); // Practice cost
+
+        initGame(modeToStart, t, d, s);
+    }
+
+    // Auth
+    document.getElementById('btn-signin').addEventListener('click', () => {
+        GameState.isSignedIn = true; GameState.username = "Gamer" + rand(100,999);
+        document.getElementById('btn-signin').classList.add('hidden');
+        document.getElementById('user-info').classList.remove('hidden');
+        document.getElementById('username-display').textContent = GameState.username;
+        document.getElementById('btn-multiplayer').classList.remove('opacity-50', 'cursor-not-allowed');
+    });
+    document.getElementById('btn-signout').addEventListener('click', () => {
+        GameState.isSignedIn = false;
+        document.getElementById('btn-signin').classList.remove('hidden');
+        document.getElementById('user-info').classList.add('hidden');
+        document.getElementById('btn-multiplayer').classList.add('opacity-50', 'cursor-not-allowed');
+    });
+
+    // Modals (For Diamond, History, and Game Over only)
+    function openModal(id) {
+        document.getElementById('modal-container').classList.remove('pointer-events-none');
+        document.getElementById('modal-backdrop').classList.replace('opacity-0', 'opacity-100');
+        
+        const mod = document.getElementById(id);
+        if (id === 'history-modal') {
+            mod.classList.remove('translate-y-full');
+        } else {
+            mod.classList.remove('scale-95', 'opacity-0');
+            mod.classList.add('scale-100', 'opacity-100');
+        }
+        updatePauseState();
+    }
+    
+    function closeModal(id) {
+        const mod = document.getElementById(id);
+        if (id === 'history-modal') {
+            mod.classList.add('translate-y-full');
+        } else {
+            mod.classList.remove('scale-100', 'opacity-100');
+            mod.classList.add('scale-95', 'opacity-0');
+        }
+        
+        document.getElementById('modal-backdrop').classList.replace('opacity-100', 'opacity-0');
+        updatePauseState(); // Update immediately so the game immediately unpauses
+        setTimeout(() => {
+            document.getElementById('modal-container').classList.add('pointer-events-none');
+        }, 300);
+    }
+
+    function closeAllModals() {
+        ['diamond-modal', 'history-modal'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (id === 'history-modal') {
+                    el.classList.add('translate-y-full');
+                } else {
+                    el.classList.remove('scale-100', 'opacity-100');
+                    el.classList.add('scale-95', 'opacity-0');
+                }
+            }
+        });
+        document.getElementById('modal-backdrop').classList.replace('opacity-100', 'opacity-0');
+        updatePauseState();
+        setTimeout(() => document.getElementById('modal-container').classList.add('pointer-events-none'), 300);
+    }
+
+    // History Modal
+    function openHistoryModal() {
+        setMenuExpanded(false);
+        setStoreExpanded(false);
+        
+        const content = document.getElementById('history-content');
+        if (HistoryManager.records.length === 0) {
+            content.innerHTML = `<div class="text-center text-gray-400 mt-10"><i class="fas fa-history text-4xl mb-3 opacity-50"></i><p>No exact matches yet.</p><p class="text-sm mt-1">Hit a target exactly to set a record!</p></div>`;
+        } else {
+            content.innerHTML = HistoryManager.records.map((r, i) => `
+                <div class="flex items-center justify-between bg-black/30 p-3 rounded-xl border border-white/5 ${i===0 ? 'border-brand-gold/50 bg-brand-gold/10 shadow-[0_0_10px_rgba(255,223,0,0.1)]' : ''}">
+                    <div class="w-1/3 flex items-center gap-3">
+                        ${i===0 ? '<i class="fas fa-crown text-brand-gold text-xl drop-shadow-md"></i>' : `<span class="text-gray-500 font-bold w-5 text-center">${i+1}</span>`}
+                        <span class="font-black text-xl ${i===0 ? 'text-brand-gold' : 'text-white'}">${r.cardsUsed}</span>
+                    </div>
+                    <div class="w-1/3 text-center font-bold text-gray-300 text-lg">${r.target}</div>
+                    <div class="w-1/3 text-right text-sm text-gray-500 font-medium">${r.date}</div>
+                </div>
+            `).join('');
+        }
+        
+        openModal('history-modal');
+    }
+
+    // Store sidebar launch
+    document.getElementById('btn-open-store').addEventListener('click', (e) => { 
+        e.stopPropagation(); 
+        setStoreTab('points'); 
+        setStoreExpanded(true); 
+    });
+    
+    function setStoreTab(tab) {
+        ['points', 'themes', 'emotes'].forEach(t => {
+            document.getElementById(`tab-${t}`).className = t===tab ? 'flex-1 py-2 rounded-lg font-bold bg-white/20 shadow-sm transition' : 'flex-1 py-2 rounded-lg font-bold hover:bg-white/10 transition text-white/70 hover:text-white';
+        });
+        
+        let html = '';
+        if(tab==='points') {
+            const pkgs = [[1000, "$0.99"], [5500, "$4.99"], [12000, "$9.99"], [30000, "$19.99"], [100000, "$49.99"]];
+            html = pkgs.map(p => `<div class="flex justify-between items-center bg-black/30 p-4 rounded-xl mb-3 border border-white/5 hover:bg-black/50 transition"><div class="flex items-center gap-4"><i class="fas fa-star text-brand-gold text-2xl drop-shadow-[0_0_8px_rgba(255,223,0,0.5)]"></i><span class="font-bold text-lg">${p[0].toLocaleString()} Points</span></div><button onclick="PointsManager.add(${p[0]})" class="bg-blue-500 hover:bg-blue-400 px-5 py-2 rounded-lg font-bold shadow-md transition">${p[1]}</button></div>`).join('');
+            html += `<button onclick="PointsManager.reset()" class="w-full mt-4 bg-red-500/20 text-red-400 hover:bg-red-500/30 p-3 rounded-xl font-bold text-sm transition border border-red-500/30">Reset Points (Test)</button>`;
+        } else if (tab==='themes') {
+            const thm = [["Default", 0, "gray"], ["Ocean", 250, "blue"], ["Forest", 250, "green"], ["Volcano", 350, "red"], ["Neon", 350, "pink"], ["Galaxy", 500, "purple"]];
+            html = thm.map(t => `<div class="flex justify-between items-center bg-black/30 p-4 rounded-xl mb-3 border border-white/5 hover:bg-black/50 transition ${PointsManager.currentPoints < t[1] && t[1]>0 ? 'opacity-60':''}"><div class="flex items-center gap-4"><i class="fas fa-paint-brush text-${t[2]}-400 text-xl w-6 text-center drop-shadow-md"></i><span class="font-bold text-lg">${t[0]}</span></div><button onclick="${t[1]>0?'PointsManager.deduct('+t[1]+')':''}" class="bg-${t[2]}-500/60 hover:bg-${t[2]}-500/80 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition" ${t[1]===0?'disabled':''}>${t[1]===0?'Owned':`<i class="fas fa-star text-brand-gold text-xs"></i>${t[1]}`}</button></div>`).join('');
+        } else {
+            const emt = [["Thumbs Up", "👍"], ["Clapping", "👏"], ["Laughing", "😂"], ["Angry", "😡"], ["Shocked", "😱"], ["Dancing", "💃"], ["Trophy", "🏆"], ["Face Palm", "🤦‍♂️"]];
+            html = `<div class="grid grid-cols-2 gap-4">` + emt.map(e => `<div class="bg-black/30 p-5 rounded-xl border border-white/5 flex flex-col items-center gap-3 hover:bg-black/50 transition"><div class="text-5xl bg-black/20 w-20 h-20 rounded-2xl flex items-center justify-center shadow-inner">${e[1]}</div><span class="text-sm font-bold">${e[0]}</span><button onclick="PointsManager.deduct(1000)" class="bg-green-500/30 hover:bg-green-500/50 text-green-300 px-4 py-1.5 rounded-lg font-bold flex items-center gap-1.5 text-xs transition mt-1 ${PointsManager.currentPoints<1000?'opacity-50':''}"><i class="fas fa-star text-brand-gold"></i>1000</button></div>`).join('') + `</div>`;
+        }
+        document.getElementById('store-content').innerHTML = html;
+        updatePointsUI();
+    }
+
+    // Diamond Request
+    function openDiamondModal() {
+        if (PointsManager.currentPoints < 50 || GameState.diamondRequested) return;
+        setMenuExpanded(false);
+        document.getElementById('diamond-input').value = '';
+        document.getElementById('diamond-error').classList.add('hidden');
+        openModal('diamond-modal');
+        updatePointsUI();
+    }
+    
+    function submitDiamondRequest() {
+        const val = parseInt(document.getElementById('diamond-input').value);
+        const err = document.getElementById('diamond-error');
+        if (isNaN(val) || val < -999 || val > 999) { err.textContent = "Valid number required (-999 to 999)"; err.classList.remove('hidden'); return; }
+        if (val === 0) { err.textContent = "Cannot request 0"; err.classList.remove('hidden'); return; }
+        if (PointsManager.deduct(50)) {
+            GameState.diamondRequested = true;
+            GameState.requestedValue = val;
+            closeModal('diamond-modal');
+        } else {
+            err.textContent = "Not enough points!";
+            err.classList.remove('hidden');
+        }
+    }
+
+    function updatePointsUI() {
+        DOM.ptsDisplay.textContent = PointsManager.currentPoints;
+        document.getElementById('store-points-display').textContent = PointsManager.currentPoints;
+        document.getElementById('diamond-points-display').textContent = PointsManager.currentPoints;
+        document.getElementById('stake-points-display').textContent = PointsManager.currentPoints;
+    }
+
+    // Game Over UI
+    function showGameOverOverlay() {
+        const mod = document.getElementById('game-over-modal');
+        const tit = document.getElementById('go-title');
+        const msg = document.getElementById('go-message');
+        const iconContainer = document.getElementById('go-icon-container');
+        
+        // Hide Top Nav Bar Buttons
+        DOM.topNavBar.classList.add('opacity-0', 'pointer-events-none');
+
+        mod.classList.remove('pointer-events-none', 'opacity-0', 'scale-95');
+        mod.classList.add('pointer-events-auto', 'opacity-100', 'scale-100');
+
+        document.getElementById('go-target-score').textContent = GameState.targetNumber;
+        document.getElementById('go-player-score').textContent = calculatePlayerSum();
+        
+        if (GameState.mode !== 'soloTraining') {
+            document.getElementById('go-opponent-container').classList.remove('hidden');
+            document.getElementById('go-opponent-label').textContent = GameState.opponentName;
+            document.getElementById('go-opponent-score').textContent = calculateOpponentSum();
+        } else {
+            document.getElementById('go-opponent-container').classList.add('hidden');
+        }
+
+        const base = GameState.type === 'pro' ? "Pro game finished." : "Timed game finished.";
+        if (GameState.isDraw) { 
+            iconContainer.innerHTML = '<i class="fas fa-handshake text-5xl text-gray-400 drop-shadow-md"></i>';
+            tit.textContent = "It's a Draw!"; 
+            tit.className="text-4xl font-black mb-2 text-white tracking-wide"; 
+            msg.textContent = base + " It ended in a tie."; 
+        }
+        else if (GameState.winner === 'human') { 
+            iconContainer.innerHTML = '<i class="fas fa-trophy text-5xl text-brand-gold drop-shadow-[0_0_15px_rgba(255,223,0,0.6)]"></i>';
+            tit.textContent = "You Won!"; 
+            tit.className="text-4xl font-black mb-2 text-brand-green tracking-wide"; 
+            msg.textContent = base + (GameState.exactPlayer ? " You hit the target exactly!" : " You were closest to the target!"); 
+        }
+        else if (GameState.winner === 'opponent') { 
+            iconContainer.innerHTML = '<i class="fas fa-times-circle text-5xl text-brand-red drop-shadow-[0_0_15px_rgba(231,76,60,0.6)]"></i>';
+            tit.textContent = `${GameState.opponentName} Won!`; 
+            tit.className="text-3xl font-black mb-2 text-brand-red tracking-wide"; 
+            msg.textContent = base + (GameState.exactOpponent ? ` ${GameState.opponentName} hit the target exactly.` : ` ${GameState.opponentName} was closer to the target.`); 
+        }
+        else { 
+            iconContainer.innerHTML = '<i class="fas fa-check-circle text-5xl text-brand-blue drop-shadow-[0_0_15px_rgba(52,152,219,0.6)]"></i>';
+            tit.textContent = "Game Over"; 
+            tit.className="text-4xl font-black mb-2 text-brand-blue tracking-wide"; 
+            msg.textContent = GameState.type==='pro' ? "Practice complete! Keep honing your skills." : `Time's up! Target was ${GameState.targetNumber}.`; 
+        }
+    }
+
+    function hideGameOverOverlay() {
+        const mod = document.getElementById('game-over-modal');
+        mod.classList.add('pointer-events-none', 'opacity-0', 'scale-95');
+        mod.classList.remove('pointer-events-auto', 'opacity-100', 'scale-100');
+        
+        // Restore Top Nav Bar Buttons
+        DOM.topNavBar.classList.remove('opacity-0', 'pointer-events-none');
+    }
+
+    function restartGame() { hideGameOverOverlay(); startGame(GameState.mode, GameState.type, GameState.duration, GameState.stake); }
+    function newTargetGame() { hideGameOverOverlay(); startGame(GameState.mode, GameState.type, GameState.duration, GameState.stake); }
+
+    // Bootstrap
+    window.onload = () => {
+        PointsManager.load();
+        HistoryManager.load();
+        resizeCanvas();
+        requestAnimationFrame(gameLoop);
+        initGame('soloTraining', 'pro', 60, 0); // Start default game
+    };
+
+    // Global listeners
+    document.addEventListener('contextmenu', e => e.preventDefault()); // prevent long press context menus on mobile
+</script>
+</body>
+</html>
